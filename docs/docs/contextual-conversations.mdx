@@ -5,92 +5,105 @@ title: Complex Contextual Conversations
 ---
 
 
-
-
-# WHAT IS THIS PATTERN: users ask things that depend on previous convo turns to be correctly handled
-# HOW TO IMPLEMENT: 
-  ## TOOLS to use
-### max_history
-### slots
-### TEDPolicy
-  ## DATA 
-### contextual stories
-### Saving real conversations
-
 In a contextual conversation, your assistant considers more more just the last
-user message and responds differently based on the conversation history.
+user message and responds differently based on the conversation history. 
 
-Not every user goal you define will fall under the category of business logic. For the
-other cases you will need to use stories and context to help the user achieve their goal.
+For example, if a user asks Sara, the Rasa bot, how to get started using Rasa,
+Sara gives the user
+different information based on whether they've built an AI assistant before or are
+migrating from a different tool:
 
-If we take the example of the “getting started” skill from Sara, we want to give them
-different information based on whether they've built an AI assistant before and are
-migrating from a different tool etc. This can be done quite simply with stories and
-the concept of [max history](./policies.mdx#max-history).
-
-```md
- ## new to rasa + built a bot before
- * how_to_get_started
-   - utter_getstarted
-   - utter_first_bot_with_rasa
- * affirm
-   - action_set_onboarding
-   - slot{"onboarding": true}
-   - utter_built_bot_before
- * affirm
-   - utter_ask_migration
- * deny
-   - utter_explain_rasa_components
-   - utter_rasa_components_details
-   - utter_ask_explain_nlucorex
- * affirm
-   - utter_explain_nlu
-   - utter_explain_core
-   - utter_explain_x
-   - utter_direct_to_step2
-
- ## not new to rasa + core
- * how_to_get_started
-   - utter_getstarted
-   - utter_first_bot_with_rasa
- * deny
-   - action_set_onboarding
-   - slot{"onboarding": false}
-   - utter_ask_which_product
- * how_to_get_started{"product": "core"}
-   - utter_explain_core
-   - utter_anything_else
+A conversation with a new user goes like this:
+```yaml
+## TODO
 ```
 
-The above example mostly leverages intents to guide the flow, however you can also
-guide the flow with entities and slots. For example, if the user gives you the
-information that they're new to Rasa at the beginning, you may want to skip this
-question by storing this information in a slot.
-
-```md
-* how_to_get_started{"user_type": "new"}
-  - slot{"user_type":"new"}
-  - action_set_onboarding
-  - slot{"onboarding": true}
-  - utter_getstarted_new
-  - utter_built_bot_before
+A conversation with a migrating user is a little different:
+```yaml
+## TODO
 ```
 
-For this to work, keep in mind that the slot has to be featurized in your `domain.yml`
-file. This time we can use the `text` slot type, as we only care about whether the
-[slot was set or not](./domain.mdx#slots/).
+This page is a guide to creating contextual conversation patterns. 
 
-## AugmentedMemoizationPolicy
+## Concepts
 
-To make your bot more robust to interjections, you can replace the MemoizationPolicy
-with the AugmentedMemoizationPolicy. It works the same way as the MemoizationPolicy,
-but if no exact match is found it additionally has a mechanism that forgets a certain
-amount of steps in the conversation history to find a match in your stories (read more
-[here](policies.mdx#augmented-memoization-policy))
+For an assistant to be context-sensitive, it needs keep track of relevant parts of the conversation.
+<!-- it automatiaclly keeps track of a certain number of turns defined by max_history. For things
+that should last longer than max history, you should use slots-->
 
-## Using ML to generalise
+### `max_history`
 
-Aside from the more rule-based policies we described above, Core also has some ML
+### Slots
+
+[Slots](domain.mdx#slots) are your assistant's memory. Slots store pieces of information that your
+assistant needs to refer to later, especially when you don't know how much later. 
+Slots can be automatically filled by entities of the 
+same name, or they can be filled by a custom action. For example, a custom action could retrieve
+information about a user from a database and store that in slots. Slots direct the flow of the conversation
+based on `slot_was_set` events. There are different [types of slots](domain.mdx#slot-types),
+and each affects the conversation flow in its own way. 
+
+In the getting started example, the bot needs to know whether a user is new to building bots.
+You can define a slot called `new_user` in your domain:
+
+```yaml
+slots:
+  new_user:
+    - type: text
+```
+
+The slot is a `text` slot,
+which means it doesn't matter what the value of the slot is, the only thing that 
+affects the dialogue is whether it is set or not. The slot gets set by the entity of the same name
+(see the [training data](#nlu-training-data) for this example).
+
+You can now include a `slot_was_set` event in your stories to change the conversation flow.
+For example:
+
+```yaml
+stories:
+  - story: New user
+    steps:
+    - intent: get_started
+      entities:
+      - new_user
+    - slot_was_set:
+      - new_user
+    - action: utter_welcome_new_user
+    - action: utter_ask_built_bots
+
+  - story: Not new user
+    steps:
+    - intent: get_started
+    - action: utter_welcome
+    - action: utter_ask_migrating
+```
+
+In the example above, the steps immediately after the user message `get_started` diverge
+based on whether the `new_user` slot was set. However, you could also use the slot much
+later in the conversation, for example if the user asks about training data formats:
+
+```
+stories:
+  - story: New user asks about training data formats
+    steps:
+    - intent: data_format
+    - slot_was_set:
+      - new_user
+    - action: utter_format_overview
+
+  - story: Migrating user asks about training data formats
+    steps:
+    - intent: data_format
+    - action: utter_welcome_migrating_user
+    - action: utter_ask_tool
+```
+
+### Real Conversations as Stories
+
+### Using ML to generalise
+
+Aside from the more rule-based policies described above, Core also has some ML
 policies you can use. These come in as an additional layer in your policy configuration,
 and only jump in if the user follows a path that you have not anticipated. **It is important
 to understand that using these policies does not mean letting go of control over your
@@ -134,3 +147,9 @@ Since the ML policy generalized well in this situation, it makes sense to add th
 to your training data to continuously improve your bot and help the ML generalize even
 better in future. [Rasa X](https://rasa.com/docs/rasa-x/) is a tool that can help
 you improve your bot and make it more contextual.
+
+## Training Data
+
+### Stories
+
+### NLU Training Data
