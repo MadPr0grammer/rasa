@@ -33,6 +33,21 @@ that should last longer than max history, you should use slots-->
 
 ### `max_history`
 
+Usually, only a certain amount of context is relevant to your assistant. 
+[`max_history`](policies.mdx#max-history) is a hyperparameter for Rasa dialogue management policies
+that controls how much dialogue history the model looks at to decide which
+action to take next. 
+
+You can set the `max_history` by passing it to your policy's `Featurizer`
+in the policy configuration yaml file:
+
+<!--TODO: Complete this section based on a better understanding of 
+policies in 2.0 esp re. priorities & memoization-->
+
+You want to make sure `max_history` is set high enough
+to account for the most context your assistant will need to make an accurate 
+prediction about awhat to do next.
+
 ### Slots
 
 [Slots](domain.mdx#slots) are your assistant's memory. Slots store pieces of information that your
@@ -81,43 +96,38 @@ stories:
 
 In the example above, the steps immediately after the user message `get_started` diverge
 based on whether the `new_user` slot was set. However, you could also use the slot much
-later in the conversation, for example if the user asks about training data formats:
+later in the conversation.
 
-```
-stories:
-  - story: New user asks about training data formats
-    steps:
-    - intent: data_format
-    - slot_was_set:
-      - new_user
-    - action: utter_format_overview
+### Saving Real Conversations as Stories
 
-  - story: Migrating user asks about training data formats
-    steps:
-    - intent: data_format
-    - action: utter_welcome_migrating_user
-    - action: utter_ask_tool
-```
+It's difficult to know ahead of time exactly which conversation
+contexts the bot will encounter since your users will probably take conversation paths you didn't expect. 
+One of the best ways to improve your assistant's contextual skills 
+is to take real conversations as training data, after correcting where
+the bot went wrong if necessary. When doing so, pay attention
+to slot and entity values and make sure to [test your assistant](testing-your-assistant.mdx)
+thoroughly to make sure your changes don't introduce regressions. 
 
-### Real Conversations as Stories
+### Using Machine Learning Policies to Generalise
 
-### Using ML to generalise
-
-Aside from the more rule-based policies described above, Core also has some ML
-policies you can use. These come in as an additional layer in your policy configuration,
+In addition to adding stories to account for context,
+machine learning policies can help your model generalize
+to unseeen conversation paths. These policies
+come in as an additional layer in your policy configuration,
 and only jump in if the user follows a path that you have not anticipated. **It is important
-to understand that using these policies does not mean letting go of control over your
+to understand that using machine-learning policies does not mean letting go of control over your
 assistant.** If a rule based policy is able to make a prediction, that prediction will
 always have a higher priority (read more [here](./policies.mdx#action-selection)) and predict the next action. The
-ML based policies give your assistant the chance not to fail, whereas if they are not
+machine-learning based policies give your assistant the chance not to fail, whereas if they are not
 used your assistant will definitely fail, like in state machine based dialogue systems.
 
-These types of unexpected user behaviors are something our [TEDPolicy](https://blog.rasa.com/unpacking-the-ted-policy-in-rasa-open-source/) deals with
+Unexpected user behaviors are something the [`TEDPolicy`](https://blog.rasa.com/unpacking-the-ted-policy-in-rasa-open-source/) deals with
 very well. It can learn to bring the user back on track after some
 interjections during the main user goal the user is trying to complete. For example,
 in the conversation below (extracted from a conversation on [Rasa X](https://rasa.com/docs/rasa-x/user-guide/review-conversations/)):
 
 ```md
+<!--TODO: convert to new format-->
 ## Story from conversation with a2baab6c83054bfaa8d598459c659d2a on November 28th 2019
 * greet
   - action_greet_user
@@ -139,17 +149,11 @@ in the conversation below (extracted from a conversation on [Rasa X](https://ras
 ```
 
 Here we can see the user has completed a few chitchat tasks first, and then ultimately
-asks how they can get started with Rasa X. The TEDPolicy correctly predicts that
+asks how they can get started with Rasa X. The `TEDPolicy` correctly predicts that
 Rasa X should be explained to the user, and then also takes them down the getting started
 path, without asking all the qualifying questions first.
 
-Since the ML policy generalized well in this situation, it makes sense to add this story
-to your training data to continuously improve your bot and help the ML generalize even
+Since the machine-learning policy generalized well in this situation, it makes sense to add this story
+to your training data to continuously improve your bot and help the model generalize
 better in future. [Rasa X](https://rasa.com/docs/rasa-x/) is a tool that can help
 you improve your bot and make it more contextual.
-
-## Training Data
-
-### Stories
-
-### NLU Training Data
