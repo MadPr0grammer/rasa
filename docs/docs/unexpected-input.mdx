@@ -83,6 +83,28 @@ def run(self, dispatcher, tracker, domain):
 
 This action will return the `utter_greet` response to the user, before removing the interaction from the dialogue history.
 
+## Data
+
+### Rules for Reverted Utterances
+
+If you've defined an action that includes `UserUtteranceReverted`, you only
+need to add a single rule for it, since it won't affect the dialogue history:
+
+```yaml
+rules:
+- rule: greet user
+  steps:
+  - intent: greet
+  - action: action_greet_user
+```
+
+You'll also need to add any responses your action runs to your domain:
+
+```yaml
+responses:
+  utter_greet: Hi there! 
+```
+
 ### Stories with Interjections
 
 You can't revert every kind of interjection. In these cases,
